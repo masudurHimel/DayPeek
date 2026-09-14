@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+jobs:
+  test-and-build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run tests
+        run: swift test
+
+      - name: Build app bundle
+        run: Scripts/make-app.sh
+
+      - name: Sanity-check the bundle
+        run: |
+          test -x build/DayPeek.app/Contents/MacOS/DayPeek
+          /usr/libexec/PlistBuddy -c "Print :LSUIElement" build/DayPeek.app/Contents/Info.plist | grep -q true
+          /usr/libexec/PlistBuddy -c "Print :NSRemindersFullAccessUsageDescription" build/DayPeek.app/Contents/Info.plist | grep -q .
+          codesign --verify build/DayPeek.app
