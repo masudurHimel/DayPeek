@@ -1,18 +1,23 @@
 name: Release
 
-# The project's only workflow. It runs once, when a pull request is MERGED
-# into master: tests, universal build, and a bundle sanity check on every
-# merge; tag + GitHub Release only when VERSION names a version that has not
-# been tagged yet. A direct push to master, a PR that is closed without
-# merging, and any activity on feature branches do nothing.
+# The project's only workflow. It runs once per pull request MERGED into
+# master: tests, universal build, and a bundle sanity check on every merge;
+# tag + GitHub Release only when VERSION names a version that has not been
+# tagged yet.
+#
+# It listens to pushes on master (so the Actions list labels the run
+# "master", not with the PR's branch) and the first step asks GitHub whether
+# the pushed commit is the merge of a pull request into master. If it is not
+# — a direct push — every later step is skipped. Nothing at all runs on
+# feature branches or on PRs before they merge.
 
 on:
-  pull_request:
-    types: [closed]
+  push:
     branches: [master]
 
 permissions:
   contents: write
+  pull-requests: read
 
 concurrency:
   group: release-master
@@ -20,17 +25,31 @@ concurrency:
 
 jobs:
   release:
-    if: github.event.pull_request.merged == true
     runs-on: macos-15
     steps:
-      # Check out the base branch, not the PR ref: the tag must point at the
-      # squash-merge commit that is now master's head.
+      - name: Only continue for a merged pull request
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Every PR (merge commit or squash) is associated with its resulting
+          # commit on master; a direct push has no merged PR behind it.
+          COUNT="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/pulls" \
+            --jq '[.[] | select(.merged_at != null and .base.ref == "master")] | length')"
+          if [ "$COUNT" = "0" ]; then
+            echo "::notice::Commit ${GITHUB_SHA} is not a pull-request merge — nothing to do."
+            echo "merged=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "merged=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@v5
+        if: steps.pr.outputs.merged == 'true'
         with:
-          ref: ${{ github.event.pull_request.base.ref }}
           fetch-depth: 0
 
       - name: Read and validate VERSION
+        if: steps.pr.outputs.merged == 'true'
         id: ver
         run: |
           VERSION="$(tr -d '[:space:]' < VERSION)"
@@ -41,6 +60,7 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Skip if this version is already released
+        if: steps.pr.outputs.merged == 'true'
         id: guard
         run: |
           if git rev-parse "v${{ steps.ver.outputs.version }}" >/dev/null 2>&1; then
@@ -53,12 +73,15 @@ jobs:
       # Tests and build run on every merge, released or not, so master is
       # always known to be green.
       - name: Run tests
+        if: steps.pr.outputs.merged == 'true'
         run: swift test
 
       - name: Build universal app
+        if: steps.pr.outputs.merged == 'true'
         run: Scripts/make-app.sh --universal
 
       - name: Sanity-check the bundle
+        if: steps.pr.outputs.merged == 'true'
         run: |
           test -x build/DayPeek.app/Contents/MacOS/DayPeek
           /usr/libexec/PlistBuddy -c "Print :LSUIElement" build/DayPeek.app/Contents/Info.plist | grep -q true
@@ -66,11 +89,11 @@ jobs:
           codesign --verify build/DayPeek.app
 
       - name: Package
-        if: steps.guard.outputs.skip == 'false'
+        if: steps.pr.outputs.merged == 'true' && steps.guard.outputs.skip == 'false'
         run: ditto -c -k --keepParent build/DayPeek.app "DayPeek-${{ steps.ver.outputs.version }}.zip"
 
       - name: Build release notes
-        if: steps.guard.outputs.skip == 'false'
+        if: steps.pr.outputs.merged == 'true' && steps.guard.outputs.skip == 'false'
         run: |
           VERSION="${{ steps.ver.outputs.version }}"
           # Pull the CHANGELOG section for this version (between its heading and the next).
@@ -103,7 +126,7 @@ jobs:
           } >> notes.md
 
       - name: Tag and release
-        if: steps.guard.outputs.skip == 'false'
+        if: steps.pr.outputs.merged == 'true' && steps.guard.outputs.skip == 'false'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
