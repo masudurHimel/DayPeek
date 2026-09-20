@@ -92,7 +92,7 @@ There is a single workflow, [.github/workflows/release.yml](.github/workflows/re
 
 1. Work on a feature branch and open a PR to `master`. To ship, bump `VERSION` and add a matching section to [CHANGELOG.md](CHANGELOG.md) in that PR.
 2. When the PR is **merged**, the workflow runs the tests, builds a **universal** app, and sanity-checks the bundle. If `VERSION` is not yet tagged it also zips the app, tags `vX.Y.Z`, and publishes a GitHub Release with the changelog section as release notes.
-3. Nothing runs on feature branches, on PRs that are closed without merging, or on a direct push to `master`.
+3. Nothing runs on feature branches or on PRs before they merge. A direct push to `master` starts a run that stops at the first step, because the commit is not a pull-request merge.
 
 ## Project layout
 
