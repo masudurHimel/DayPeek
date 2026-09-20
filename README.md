@@ -2,7 +2,7 @@
 
 A minimal, beautiful, floating checklist of **today's Apple Reminders** for the macOS menu bar. Free and open source (MIT), macOS 14+. Sibling of [MonthPeek](https://github.com/masudurHimel/monthpeek).
 
-Click the checklist in your menu bar and a clean card pops down — above whatever you're working on, even fullscreen apps — showing every open reminder due today or overdue. **One click ticks a reminder off** and it's completed in Reminders. Click anywhere else and the card tucks itself back into the bar.
+Click the checklist in your menu bar and a clean card pops down — above whatever you're working on, even fullscreen apps — showing every open reminder due today or overdue. **One click on its round checkbox ticks a reminder off** and it's completed in Reminders. Click anywhere else and the card tucks itself back into the bar.
 
 ## Features
 
@@ -10,14 +10,15 @@ Click the checklist in your menu bar and a clean card pops down — above whatev
 - **Left-click** toggles the floating panel; **right-click** (or ctrl-click) gives exactly two menu items: *Preferences…* and *Quit*.
 - **Floats above everything** — regular apps, other Spaces, and fullscreen apps — and never steals focus from the app you're using.
 - **Overdue** (red) on top, then **Today**, both sorted by due time. Each row shows a round checkbox in its list colour, the title, the due time (or "All-day"), and the list name.
-- **Single click completes** a reminder — saved to Reminders instantly — and moves it to a **Completed** section at the bottom, collapsed by default (click the header to expand). Click a completed row to reopen it. The section also lists everything you completed earlier today, in any app.
+- **Click the round checkbox** to complete a reminder — saved to Reminders instantly — and move it to a **Completed** section at the bottom, collapsed by default (click the header to expand). Click a completed reminder's checkbox to reopen it. The rest of the row is inert, so a stray click never ticks anything. The section also lists everything you completed earlier today, in any app.
+- **Hover a reminder** and three small round buttons appear at its right edge: **edit the title** in place (Return saves, Esc cancels), **change the date & time** in a small popover (month grid, Today / Tomorrow / Next week, time, All-day), and **delete** it (with a confirmation; ⌥-click the trash to skip it). Completed rows don't show the buttons.
 - **Resizable** by dragging edges/corners (280×240 up to 560×900); the size is remembered.
 - **Esc closes**, click-outside closes (unless pinned), springy pop-down/retract-up animation.
-- **Preferences**: Appearance (System / Light / Dark), pin panel, launch at login.
+- **Preferences**: Appearance (System / Light / Dark), pin panel, show row actions on hover, launch at login.
 
 ## Privacy: one permission, no connection required
 
-- **One permission: Reminders.** DayPeek reads your reminders and writes exactly one field — completed or not — when you click a row. Nothing else is touched. No Calendar events, no Accessibility, no Screen Recording.
+- **One permission: Reminders.** DayPeek reads your reminders and writes only what you ask for by clicking: completion when you tick a checkbox, and the title, due date, or deletion when you use a row's hover buttons. Nothing happens on its own. No Calendar events, no Accessibility, no Screen Recording.
 - **No network. No connection required.** Zero network requests — no analytics, no telemetry, no update checks.
 - **No third-party dependencies.** Pure Swift + SwiftUI + AppKit + EventKit. Small enough to audit in an afternoon.
 - The only things it stores are your preferences and panel size, in its own `UserDefaults` domain.
@@ -43,8 +44,11 @@ Click the checklist in your menu bar and a clean card pops down — above whatev
 | --- | --- |
 | Left-click the menu bar icon | Toggle the reminders panel |
 | Right-click / ctrl-click the icon | Menu: Preferences…, Quit |
-| Click a reminder row | Mark it complete (moves to Completed) |
-| Click a row under Completed | Reopen it |
+| Click a reminder's checkbox | Mark it complete (moves to Completed) |
+| Click a checkbox under Completed | Reopen it |
+| Hover a row → ✎ | Edit the title in place (Return saves, Esc cancels) |
+| Hover a row → 🕓 | Change the due date & time in a popover |
+| Hover a row → 🗑 | Delete the reminder (confirms first; ⌥-click skips) |
 | Click the Completed header | Expand / collapse today's completed reminders |
 | Drag panel edges/corners | Resize (remembered) |
 | Drag the panel background | Move the panel |
@@ -58,6 +62,7 @@ Right-click the menu bar icon → **Preferences…**
 
 - **Appearance** — System / Light / Dark (the panel follows automatically)
 - **Pin panel** — keep the list open when clicking elsewhere
+- **Show row actions on hover** — turn the edit / date / delete buttons off if you only want the checklist
 - **Launch at login** — uses Apple's `SMAppService`; no helper app, no daemon
 
 ## Build from source
@@ -98,8 +103,8 @@ Sources/DayPeek/
   Panel/PeekPanel.swift              Non-activating floating NSPanel
   Panel/PanelController.swift        Show/hide, positioning, reload-on-open, size persistence
   Reminders/DayBuckets.swift         Pure bucketing/sorting (unit tested)
-  Reminders/ReminderStore.swift      EventKit: fetch, toggle completion, change observation
-  Reminders/RemindersView.swift      SwiftUI card: sections, rows, animations
+  Reminders/ReminderStore.swift      EventKit: fetch, toggle / rename / reschedule / delete, change observation
+  Reminders/RemindersView.swift      SwiftUI card: sections, rows, hover actions, popovers, animations
   Preferences/                       Preferences window + settings storage
 Resources/Info.plist                 LSUIElement bundle plist + Reminders usage strings
 Scripts/make-app.sh                  Build → bundle → sign

@@ -5,6 +5,8 @@ enum SettingsKey {
     static let pinPanel = "pinPanel"
     static let panelWidth = "panelWidth"
     static let panelHeight = "panelHeight"
+    /// Show the edit / date / delete buttons when hovering a row. Default on.
+    static let showRowActions = "showRowActions"
 }
 
 enum AppearanceMode: String, CaseIterable, Identifiable {
