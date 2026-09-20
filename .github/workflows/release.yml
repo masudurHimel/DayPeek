@@ -1,8 +1,10 @@
 name: Release
 
-# A pull request MERGED into master cuts a release IFF the VERSION file names
-# a version that has not been tagged yet. A direct push to master, or a PR
-# that is closed without merging, does nothing.
+# The project's only workflow. It runs once, when a pull request is MERGED
+# into master: tests, universal build, and a bundle sanity check on every
+# merge; tag + GitHub Release only when VERSION names a version that has not
+# been tagged yet. A direct push to master, a PR that is closed without
+# merging, and any activity on feature branches do nothing.
 
 on:
   pull_request:
@@ -48,13 +50,20 @@ jobs:
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
+      # Tests and build run on every merge, released or not, so master is
+      # always known to be green.
       - name: Run tests
-        if: steps.guard.outputs.skip == 'false'
         run: swift test
 
       - name: Build universal app
-        if: steps.guard.outputs.skip == 'false'
         run: Scripts/make-app.sh --universal
+
+      - name: Sanity-check the bundle
+        run: |
+          test -x build/DayPeek.app/Contents/MacOS/DayPeek
+          /usr/libexec/PlistBuddy -c "Print :LSUIElement" build/DayPeek.app/Contents/Info.plist | grep -q true
+          /usr/libexec/PlistBuddy -c "Print :NSRemindersFullAccessUsageDescription" build/DayPeek.app/Contents/Info.plist | grep -q .
+          codesign --verify build/DayPeek.app
 
       - name: Package
         if: steps.guard.outputs.skip == 'false'
