@@ -4,7 +4,8 @@ import SwiftUI
 
 /// The only place that talks to EventKit. Fetches open reminders due up to the
 /// end of today plus everything completed today, publishes them as
-/// `ReminderItem`s, and writes completion toggles back.
+/// `ReminderItem`s, and writes the user's edits back: completion toggles,
+/// title changes, due-date changes, and deletions.
 @MainActor
 final class ReminderStore: ObservableObject {
     enum Access { case unknown, denied, granted }
@@ -80,22 +81,98 @@ final class ReminderStore: ObservableObject {
     func toggle(_ item: ReminderItem) {
         guard let r = reminders[item.id] else { return }
         r.isCompleted.toggle()
+        guard save(r, undo: { r.isCompleted.toggle() }) else { return }
+        replace(item.id) { old in
+            ReminderItem(
+                id: old.id, title: old.title, listName: old.listName, due: old.due,
+                allDay: old.allDay, completed: r.isCompleted, completedAt: r.completionDate)
+        }
+    }
+
+    /// Renames a reminder. Blank titles are ignored; the caller trims.
+    func rename(_ item: ReminderItem, to title: String) {
+        guard let r = reminders[item.id], !title.isEmpty, title != item.title else { return }
+        let previous = r.title
+        r.title = title
+        guard save(r, undo: { r.title = previous }) else { return }
+        replace(item.id) { old in
+            ReminderItem(
+                id: old.id, title: title, listName: old.listName, due: old.due,
+                allDay: old.allDay, completed: old.completed, completedAt: old.completedAt)
+        }
+    }
+
+    /// Moves a reminder's due date. `allDay` drops the time component. A
+    /// reminder that already has alarms gets a single alarm at the new time
+    /// so its notification moves with it; all-day reminders keep their alarms
+    /// as they were.
+    func reschedule(_ item: ReminderItem, to due: Date, allDay: Bool) {
+        guard let r = reminders[item.id] else { return }
+        let cal = Calendar.current
+        let units: Set<Calendar.Component> = allDay
+            ? [.year, .month, .day]
+            : [.year, .month, .day, .hour, .minute]
+        var comps = cal.dateComponents(units, from: due)
+        comps.calendar = cal
+        let previousDue = r.dueDateComponents
+        let previousAlarms = r.alarms
+        r.dueDateComponents = comps
+        if !allDay, r.hasAlarms {
+            r.alarms = [EKAlarm(absoluteDate: cal.date(from: comps) ?? due)]
+        }
+        let undo = {
+            r.dueDateComponents = previousDue
+            r.alarms = previousAlarms
+        }
+        guard save(r, undo: undo) else { return }
+        let resolved = cal.date(from: comps)
+        replace(item.id) { old in
+            ReminderItem(
+                id: old.id, title: old.title, listName: old.listName, due: resolved,
+                allDay: allDay, completed: old.completed, completedAt: old.completedAt)
+        }
+    }
+
+    /// Removes the reminder from Reminders entirely.
+    func delete(_ item: ReminderItem) {
+        guard let r = reminders[item.id] else { return }
         do {
-            try store.save(r, commit: true)
+            try store.remove(r, commit: true)
             lastError = nil
         } catch {
-            r.isCompleted.toggle()
             lastError = error.localizedDescription
             return
         }
-        if let i = items.firstIndex(where: { $0.id == item.id }) {
-            let old = items[i]
-            items[i] = ReminderItem(
-                id: old.id, title: old.title, listName: old.listName, due: old.due,
-                allDay: old.allDay, completed: r.isCompleted, completedAt: r.completionDate)
-            withAnimation(.easeInOut(duration: 0.2)) {
-                buckets = DayBuckets.make(items, now: Date())
-            }
+        reminders[item.id] = nil
+        colors[item.id] = nil
+        replace(item.id) { _ in nil }
+    }
+
+    /// Commits `r`, reporting failure in `lastError` and rolling the in-memory
+    /// object back via `undo` so the UI never shows an unsaved change.
+    private func save(_ r: EKReminder, undo: () -> Void) -> Bool {
+        do {
+            try store.save(r, commit: true)
+            lastError = nil
+            return true
+        } catch {
+            undo()
+            lastError = error.localizedDescription
+            return false
+        }
+    }
+
+    /// Optimistic list update: swaps (or, for nil, removes) the item with `id`
+    /// and re-buckets with the same animation the sections use.
+    private func replace(_ id: String, with transform: (ReminderItem) -> ReminderItem?) {
+        guard let i = items.firstIndex(where: { $0.id == id }) else { return }
+        if let updated = transform(items[i]) {
+            items[i] = updated
+        } else {
+            items.remove(at: i)
+        }
+        withAnimation(.easeInOut(duration: 0.2)) {
+            buckets = DayBuckets.make(items, now: Date())
         }
     }
 

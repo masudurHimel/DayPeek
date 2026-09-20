@@ -7,6 +7,23 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Bump the version in this file and in `VERSION` together, in the same pull
 request, when you intend to ship. Merging that PR to `master` cuts the release.
 
+## [Unreleased]
+
+### Added
+- Hover actions on open reminders: three round buttons at the row's trailing
+  edge to edit the title in place (Return saves, Esc cancels), change the due
+  date & time in a popover (month grid, Today / Tomorrow / Next week chips,
+  time field, All-day switch), and delete the reminder after a confirmation
+  (⌥-click the trash to skip it). Completed rows show no buttons.
+- Rescheduling a reminder that has alarms moves its alarm to the new time.
+- Preferences: **Show row actions on hover** (on by default) hides the buttons
+  for a checklist-only panel.
+
+### Changed
+- Only the round checkbox toggles completion now; clicking elsewhere on a row
+  does nothing, so a stray click can't tick a reminder off.
+- Esc cancels an in-progress title edit before it closes the panel.
+
 ## [0.1.0] - 2026-09-14
 
 ### Added

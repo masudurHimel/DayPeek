@@ -4,6 +4,7 @@ import SwiftUI
 struct PreferencesView: View {
     @AppStorage(SettingsKey.appearance) private var appearanceRaw = AppearanceMode.system.rawValue
     @AppStorage(SettingsKey.pinPanel) private var pinPanel = false
+    @AppStorage(SettingsKey.showRowActions) private var showRowActions = true
 
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
     @State private var launchAtLoginError: String?
@@ -18,6 +19,11 @@ struct PreferencesView: View {
 
             Toggle("Pin panel", isOn: $pinPanel)
             Text("Keep the list open when clicking elsewhere.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Toggle("Show row actions on hover", isOn: $showRowActions)
+            Text("Edit, reschedule, and delete buttons appear when you hover a reminder.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 

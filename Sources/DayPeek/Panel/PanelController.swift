@@ -9,6 +9,9 @@ final class PanelState: ObservableObject {
     /// Bumped once the panel is fully hidden so the list scrolls back to the
     /// top off-screen and the next open starts from the top.
     @Published var scrollResetToken = 0
+    /// Id of the reminder whose title is being edited inline, if any. Lives
+    /// here so Esc can cancel the edit instead of closing the panel.
+    @Published var editingID: String?
 }
 
 /// Shows, hides, and positions the floating panel, reloads reminders every
@@ -105,7 +108,16 @@ final class PanelController: NSObject, NSWindowDelegate {
 
         let newPanel = PeekPanel(contentRect: NSRect(x: 0, y: 0, width: width, height: height))
         newPanel.delegate = self
-        newPanel.onEscape = { [weak self] in self?.hide() }
+        newPanel.onEscape = { [weak self] in
+            guard let self else { return }
+            // While a title is being edited, Esc cancels the edit; the next
+            // Esc closes the panel.
+            if self.state.editingID != nil {
+                self.state.editingID = nil
+            } else {
+                self.hide()
+            }
+        }
         newPanel.contentView = NSHostingView(rootView: PanelRootView(store: store, state: state))
         panel = newPanel
         return newPanel
@@ -128,6 +140,9 @@ final class PanelController: NSObject, NSWindowDelegate {
 
     func windowDidResignKey(_ notification: Notification) {
         guard isVisible, !isPinned else { return }
+        // A row's date or delete popover is a child window of the panel; it
+        // taking key status isn't the user clicking away.
+        if let key = NSApp.keyWindow, panel?.childWindows?.contains(key) == true { return }
         lastAutoClose = ProcessInfo.processInfo.systemUptime
         hide()
     }
