@@ -39,10 +39,13 @@ package as a regular Xcode project.
 
 ## Releasing (maintainers)
 
-A release is cut automatically by GitHub Actions when a commit on `master`
-changes `VERSION` to a semver value that has no `vX.Y.Z` tag yet:
+A release is cut automatically by the single GitHub Actions workflow, which
+runs only when a pull request is merged into `master`:
 
-1. Add a section for the new version to `CHANGELOG.md`.
+1. On your feature branch, add a section for the new version to `CHANGELOG.md`.
 2. Set the same version in `VERSION`.
-3. Merge to `master`. CI builds a universal binary, zips the app, tags the
-   commit, and publishes a GitHub Release with the changelog section as notes.
+3. Open a PR to `master` and merge it. The workflow runs the tests, builds a
+   universal binary, and — because `VERSION` has no `vX.Y.Z` tag yet — zips the
+   app, tags the merge commit, and publishes a GitHub Release with the
+   changelog section as notes. A merge that leaves `VERSION` unchanged still
+   runs the tests and build, but publishes nothing.
