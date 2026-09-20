@@ -91,8 +91,8 @@ Run the tests with `swift test`. Regenerate the app icon with `Scripts/make-icon
 Releases are fully automated ([.github/workflows/release.yml](.github/workflows/release.yml)):
 
 1. A PR bumps `VERSION` and adds a matching section to [CHANGELOG.md](CHANGELOG.md).
-2. On merge to `master`, CI runs the tests, builds a **universal** app, zips it, tags `vX.Y.Z`, and publishes a GitHub Release with the changelog section as release notes.
-3. Nothing happens if the version in `VERSION` is already tagged.
+2. When that PR is **merged** into `master`, the Release workflow runs the tests, builds a **universal** app, zips it, tags `vX.Y.Z`, and publishes a GitHub Release with the changelog section as release notes.
+3. Nothing happens if the version in `VERSION` is already tagged, if a PR is closed without merging, or on a direct push to `master`. CI (tests + bundle sanity check) runs on pull requests only.
 
 ## Project layout
 

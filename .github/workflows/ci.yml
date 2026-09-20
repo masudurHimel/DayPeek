@@ -1,9 +1,9 @@
 name: CI
 
+# Runs on pull requests only. Master is reached exclusively by merging a PR
+# that has already passed here, and the Release workflow re-runs the tests.
 on:
   pull_request:
-  push:
-    branches: [master]
 
 jobs:
   test-and-build:
