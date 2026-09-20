@@ -7,7 +7,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Bump the version in this file and in `VERSION` together, in the same pull
 request, when you intend to ship. Merging that PR to `master` cuts the release.
 
-## [Unreleased]
+## [0.2.0] - 2026-09-20
 
 ### Added
 - Hover actions on open reminders: three round buttons at the row's trailing
