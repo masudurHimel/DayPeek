@@ -1,10 +1,12 @@
 name: Release
 
-# Pushes to master (including merged PRs) cut a release IFF the VERSION file
-# names a version that has not been tagged yet.
+# A pull request MERGED into master cuts a release IFF the VERSION file names
+# a version that has not been tagged yet. A direct push to master, or a PR
+# that is closed without merging, does nothing.
 
 on:
-  push:
+  pull_request:
+    types: [closed]
     branches: [master]
 
 permissions:
@@ -16,10 +18,14 @@ concurrency:
 
 jobs:
   release:
+    if: github.event.pull_request.merged == true
     runs-on: macos-15
     steps:
+      # Check out the base branch, not the PR ref: the tag must point at the
+      # squash-merge commit that is now master's head.
       - uses: actions/checkout@v5
         with:
+          ref: ${{ github.event.pull_request.base.ref }}
           fetch-depth: 0
 
       - name: Read and validate VERSION
