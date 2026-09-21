@@ -52,9 +52,16 @@ struct RemindersView: View {
 
     private var header: some View {
         HStack(alignment: .firstTextBaseline) {
-            Text("Today")
-                .font(.system(size: 22, weight: .bold, design: .rounded))
-                .foregroundStyle(.blue)
+            // Inner stack centres the round button on the title while the
+            // outer stack keeps the date column on the title's baseline.
+            HStack(alignment: .center, spacing: 8) {
+                Text("Today")
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .foregroundStyle(.blue)
+                if store.access == .granted {
+                    RowActionsToggle(isOn: $showRowActions)
+                }
+            }
             Spacer()
             VStack(alignment: .trailing, spacing: 1) {
                 Text(dateLine)
@@ -407,6 +414,22 @@ struct ReminderRow: View {
                     showDeletePopover = false
                 }
             }
+        }
+    }
+}
+
+/// Header button that flips the "Show row actions on hover" preference from
+/// the panel itself. Same storage as the Preferences toggle, so the two never
+/// disagree. Stays blue while on, grey with a slashed pencil while off.
+struct RowActionsToggle: View {
+    @Binding var isOn: Bool
+
+    static func symbol(isOn: Bool) -> String { isOn ? "pencil" : "pencil.slash" }
+    static func label(isOn: Bool) -> String { isOn ? "Hide row actions" : "Show row actions" }
+
+    var body: some View {
+        RowActionButton(symbol: Self.symbol(isOn: isOn), label: Self.label(isOn: isOn), active: isOn) {
+            isOn.toggle()
         }
     }
 }
