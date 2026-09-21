@@ -7,6 +7,13 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Bump the version in this file and in `VERSION` together, in the same pull
 request, when you intend to ship. Merging that PR to `master` cuts the release.
 
+## [0.3.0] - 2026-09-21
+
+### Added
+- A round pencil button next to **Today** in the panel header toggles the
+  hover row actions on and off, sharing the **Show row actions on hover**
+  preference. Blue while on, slashed and grey while off.
+
 ## [0.2.0] - 2026-09-20
 
 ### Added

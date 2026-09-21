@@ -23,7 +23,7 @@ struct PreferencesView: View {
                 .foregroundStyle(.secondary)
 
             Toggle("Show row actions on hover", isOn: $showRowActions)
-            Text("Edit, reschedule, and delete buttons appear when you hover a reminder.")
+            Text("Edit, reschedule, and delete buttons appear when you hover a reminder. Also toggled by the pencil next to Today in the panel.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
