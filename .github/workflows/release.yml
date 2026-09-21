@@ -1,14 +1,13 @@
 name: Release
 
-# The project's only workflow. It runs once, when a pull request is MERGED
-# into master: tests, universal build, and a bundle sanity check on every
-# merge; tag + GitHub Release only when VERSION names a version that has not
-# been tagged yet. A direct push to master, a PR that is closed without
-# merging, and any activity on feature branches do nothing.
+# The project's only workflow. It runs on every push to master — in practice
+# the squash-merge of a pull request — so the run is listed under master and
+# GITHUB_SHA is master's new head: tests, universal build, and a bundle sanity
+# check on every push; tag + GitHub Release only when VERSION names a version
+# that has not been tagged yet. Feature branches and unmerged PRs do nothing.
 
 on:
-  pull_request:
-    types: [closed]
+  push:
     branches: [master]
 
 permissions:
@@ -20,14 +19,12 @@ concurrency:
 
 jobs:
   release:
-    if: github.event.pull_request.merged == true
     runs-on: macos-15
     steps:
-      # Check out the base branch, not the PR ref: the tag must point at the
-      # squash-merge commit that is now master's head.
+      # Default ref is the pushed commit, i.e. master's new head — the squash
+      # merge the tag must point at. Full history so existing tags are visible.
       - uses: actions/checkout@v5
         with:
-          ref: ${{ github.event.pull_request.base.ref }}
           fetch-depth: 0
 
       - name: Read and validate VERSION

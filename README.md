@@ -88,11 +88,11 @@ Run the tests with `swift test`. Regenerate the app icon with `Scripts/make-icon
 
 ## Releases
 
-There is a single workflow, [.github/workflows/release.yml](.github/workflows/release.yml), and it runs exactly once per pull request merged into `master`:
+There is a single workflow, [.github/workflows/release.yml](.github/workflows/release.yml), and it runs on every push to `master` — in practice, once per merged pull request:
 
 1. Work on a feature branch and open a PR to `master`. To ship, bump `VERSION` and add a matching section to [CHANGELOG.md](CHANGELOG.md) in that PR.
-2. When the PR is **merged**, the workflow runs the tests, builds a **universal** app, and sanity-checks the bundle. If `VERSION` is not yet tagged it also zips the app, tags `vX.Y.Z`, and publishes a GitHub Release with the changelog section as release notes.
-3. Nothing runs on feature branches, on PRs that are closed without merging, or on a direct push to `master`.
+2. When the PR is **merged**, the push to `master` runs the workflow against `master`'s new head: tests, a **universal** build, and a bundle sanity check. If `VERSION` is not yet tagged it also zips the app, tags `vX.Y.Z`, and publishes a GitHub Release with the changelog section as release notes.
+3. Nothing runs on feature branches or on PRs that are closed without merging. A version that is already tagged is never re-released.
 
 ## Project layout
 

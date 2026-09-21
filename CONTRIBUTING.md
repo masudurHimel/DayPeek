@@ -40,7 +40,7 @@ package as a regular Xcode project.
 ## Releasing (maintainers)
 
 A release is cut automatically by the single GitHub Actions workflow, which
-runs only when a pull request is merged into `master`:
+runs on every push to `master` — in practice, when a pull request is merged:
 
 1. On your feature branch, add a section for the new version to `CHANGELOG.md`.
 2. Set the same version in `VERSION`.

@@ -7,6 +7,15 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Bump the version in this file and in `VERSION` together, in the same pull
 request, when you intend to ship. Merging that PR to `master` cuts the release.
 
+## [0.3.1] - 2026-09-21
+
+### Changed
+- The release workflow now runs on every push to `master` (in practice, each
+  merged pull request) instead of on the pull-request "closed" event, so the
+  run is listed under `master` and points at its new head rather than at the
+  feature branch. Behaviour is otherwise unchanged; an already-tagged version
+  is never re-released.
+
 ## [0.3.0] - 2026-09-21
 
 ### Added
