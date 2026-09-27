@@ -327,10 +327,6 @@ struct ReminderRow: View {
                 HStack(spacing: 5) {
                     Text(dueText)
                         .foregroundStyle(overdue && !item.completed ? .red : .secondary)
-                    if !item.listName.isEmpty {
-                        Text("·").foregroundStyle(.tertiary)
-                        Text(item.listName).foregroundStyle(.tertiary)
-                    }
                     if isEditing {
                         Spacer(minLength: 4)
                         Text("↩ save · esc cancel")
