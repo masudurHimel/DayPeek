@@ -7,6 +7,13 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Bump the version in this file and in `VERSION` together, in the same pull
 request, when you intend to ship. Merging that PR to `master` cuts the release.
 
+## [0.3.2] - 2026-09-27
+
+### Changed
+- Reminder rows no longer show the list name after the due text. With every
+  reminder in the default list, each row repeated "Reminders" without telling
+  anything apart.
+
 ## [0.3.1] - 2026-09-21
 
 ### Changed
