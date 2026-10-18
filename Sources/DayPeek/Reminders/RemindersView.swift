@@ -30,16 +30,29 @@ struct PanelRootView: View {
     }
 }
 
-/// Header, the Overdue / Today sections, and a collapsed Completed section.
+/// Header with day navigation, the Overdue / Today sections, and a collapsed
+/// Completed section. Future days show only the reminders due that day.
 struct RemindersView: View {
     @ObservedObject var store: ReminderStore
     @ObservedObject var state: PanelState
     @State private var showCompleted = false
     @AppStorage(SettingsKey.showRowActions) private var showRowActions = true
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let topAnchor = "top"
 
+    private var showsToday: Bool { store.dayOffset == 0 }
+
+    private var title: String { DayLabel.title(for: store.day, now: Date()) }
+
     private var dateLine: String {
-        Date().formatted(.dateTime.weekday(.wide).day().month(.wide))
+        store.day.formatted(.dateTime.weekday(.wide).day().month(.wide))
+    }
+
+    /// The list slides in from the side the user is heading towards.
+    private var dayTransition: AnyTransition {
+        if reduceMotion { return .opacity }
+        let edge: CGFloat = store.movedForward ? 18 : -18
+        return .asymmetric(insertion: .offset(x: edge).combined(with: .opacity), removal: .opacity)
     }
 
     var body: some View {
@@ -51,30 +64,39 @@ struct RemindersView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .firstTextBaseline) {
-            // Inner stack centres the round button on the title while the
-            // outer stack keeps the date column on the title's baseline.
-            HStack(alignment: .center, spacing: 8) {
-                Text("Today")
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                    .foregroundStyle(.blue)
-                if store.access == .granted {
-                    RowActionsToggle(isOn: $showRowActions)
+        HStack(alignment: .top, spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .center, spacing: 8) {
+                    // Blue only on today, so another day is obvious at a glance.
+                    Text(title)
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .foregroundStyle(showsToday ? Color.blue : Color.primary)
+                        .lineLimit(1)
+                    if store.access == .granted {
+                        RowActionsToggle(isOn: $showRowActions)
+                    }
                 }
+                HStack(spacing: 4) {
+                    Text(dateLine)
+                        .foregroundStyle(.secondary)
+                    if store.access == .granted {
+                        Text("· " + (store.buckets.remaining == 0 ? "All done" : "\(store.buckets.remaining) remaining"))
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                .font(.system(size: 11.5))
+                .lineLimit(1)
             }
-            Spacer()
-            VStack(alignment: .trailing, spacing: 1) {
-                Text(dateLine)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.secondary)
-                if store.access == .granted {
-                    Text(store.buckets.remaining == 0 ? "All done" : "\(store.buckets.remaining) remaining")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.tertiary)
-                }
+            Spacer(minLength: 0)
+            if store.access == .granted {
+                DayNavigator(showsToday: showsToday,
+                             step: { store.step(by: $0) },
+                             today: { store.showDay(offset: 0) })
+                    .padding(.top, 1)
             }
         }
-        .padding(.horizontal, 18)
+        .padding(.leading, 18)
+        .padding(.trailing, 14)
         .padding(.top, 16)
         .padding(.bottom, 10)
     }
@@ -103,52 +125,12 @@ struct RemindersView: View {
                     // Completed and Today sections kept its stale (ticked) look.
                     VStack(alignment: .leading, spacing: 0) {
                         Color.clear.frame(height: 0).id(topAnchor)
-                        if b.overdue.isEmpty && b.today.isEmpty {
-                            VStack(spacing: 6) {
-                                Text("🎉").font(.system(size: 34))
-                                Text("Nothing due today").font(.headline)
-                                Text("No open reminders due today or overdue.")
-                                    .font(.caption).foregroundStyle(.secondary)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 32)
-                        }
-                        if !b.overdue.isEmpty {
-                            SectionHeader(title: "Overdue", count: b.overdue.count, color: .red)
-                            ForEach(b.overdue) { item in
-                                ReminderRow(item: item, color: store.color(for: item), overdue: true,
-                                            state: state, actions: actions(for: item)) {
-                                    store.toggle(item)
-                                }
-                                .id("overdue-" + item.id)
-                            }
-                        }
-                        if !b.today.isEmpty {
-                            SectionHeader(title: "Today", count: b.today.count, color: .secondary)
-                            ForEach(b.today) { item in
-                                ReminderRow(item: item, color: store.color(for: item), overdue: false,
-                                            state: state, actions: actions(for: item)) {
-                                    store.toggle(item)
-                                }
-                                .id("today-" + item.id)
-                            }
-                        }
-                        if !b.completed.isEmpty {
-                            CompletedHeader(count: b.completed.count, expanded: $showCompleted)
-                            if showCompleted {
-                                ForEach(b.completed) { item in
-                                    // Completed rows get no hover actions for now.
-                                    ReminderRow(item: item, color: store.color(for: item), overdue: false,
-                                                state: state, actions: nil) {
-                                        store.toggle(item)
-                                    }
-                                    .id("done-" + item.id)
-                                }
-                            }
-                        }
-                        if let err = store.lastError {
-                            Text(err).font(.caption).foregroundStyle(.red)
-                                .padding(.horizontal, 18).padding(.top, 8)
+                        // Keyed by day so a day change swaps the whole list
+                        // with a slide instead of morphing row by row.
+                        ZStack(alignment: .top) {
+                            dayList(b)
+                                .id(store.day)
+                                .transition(dayTransition)
                         }
                     }
                     .padding(.bottom, 10)
@@ -159,8 +141,142 @@ struct RemindersView: View {
                 .onChange(of: state.scrollResetToken) { _, _ in
                     proxy.scrollTo(topAnchor, anchor: .top)
                 }
+                .onChange(of: store.day) { _, _ in
+                    proxy.scrollTo(topAnchor, anchor: .top)
+                }
             }
         }
+    }
+
+    private func dayList(_ b: DayBuckets) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if b.overdue.isEmpty && b.today.isEmpty {
+                emptyState
+            }
+            if !b.overdue.isEmpty {
+                SectionHeader(title: "Overdue", count: b.overdue.count, color: .red)
+                ForEach(b.overdue) { item in
+                    ReminderRow(item: item, color: store.color(for: item), overdue: true,
+                                day: store.day, state: state, actions: actions(for: item)) {
+                        store.toggle(item)
+                    }
+                    .id("overdue-" + item.id)
+                }
+            }
+            if !b.today.isEmpty {
+                SectionHeader(title: showsToday ? "Today" : "Due", count: b.today.count, color: .secondary)
+                ForEach(b.today) { item in
+                    ReminderRow(item: item, color: store.color(for: item), overdue: false,
+                                day: store.day, state: state, actions: actions(for: item)) {
+                        store.toggle(item)
+                    }
+                    .id("today-" + item.id)
+                }
+            }
+            if !b.completed.isEmpty {
+                CompletedHeader(count: b.completed.count, expanded: $showCompleted)
+                if showCompleted {
+                    ForEach(b.completed) { item in
+                        // Completed rows get no hover actions for now.
+                        ReminderRow(item: item, color: store.color(for: item), overdue: false,
+                                    day: store.day, state: state, actions: nil) {
+                            store.toggle(item)
+                        }
+                        .id("done-" + item.id)
+                    }
+                }
+            }
+            if let err = store.lastError {
+                Text(err).font(.caption).foregroundStyle(.red)
+                    .padding(.horizontal, 18).padding(.top, 8)
+            }
+        }
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 6) {
+            if showsToday {
+                Text("🎉").font(.system(size: 34))
+                Text("Nothing due today").font(.headline)
+                Text("No open reminders due today or overdue.")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else {
+                Image(systemName: "circle.dashed").font(.system(size: 28)).foregroundStyle(.tertiary)
+                Text("Nothing due " + (store.dayOffset == 1 ? "tomorrow" : title)).font(.headline)
+                Text("No open reminders on this day.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 32)
+    }
+}
+
+/// Chevrons that step through days, plus a "Today" pill that appears only
+/// away from today. Back is disabled on today so the pair never shifts.
+struct DayNavigator: View {
+    let showsToday: Bool
+    let step: (Int) -> Void
+    let today: () -> Void
+
+    var body: some View {
+        HStack(spacing: 4) {
+            if !showsToday {
+                TodayPill(action: today)
+                    .transition(.opacity.combined(with: .offset(x: 6)))
+            }
+            DayStepButton(symbol: "chevron.left", label: "Previous day", enabled: !showsToday) { step(-1) }
+            DayStepButton(symbol: "chevron.right", label: "Next day", enabled: true) { step(1) }
+        }
+        .animation(.easeOut(duration: 0.15), value: showsToday)
+    }
+}
+
+/// A 24 pt round chevron that tints on hover; dimmed while disabled.
+struct DayStepButton: View {
+    let symbol: String
+    let label: String
+    let enabled: Bool
+    let action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(hovering && enabled ? Color.primary : Color.secondary)
+                .frame(width: 24, height: 24)
+                .background(hovering && enabled ? Color.primary.opacity(0.08) : .clear, in: Circle())
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+        .opacity(enabled ? 1 : 0.35)
+        .onHover { hovering = $0 }
+        .help(label)
+        .accessibilityLabel(label)
+    }
+}
+
+/// Blue capsule that jumps back to today.
+struct TodayPill: View {
+    let action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Text("Today")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.blue)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4)
+                .background(Color.blue.opacity(hovering ? 0.22 : 0.13), in: Capsule())
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .help("Back to today")
+        .accessibilityLabel("Back to today")
     }
 }
 
@@ -248,6 +364,8 @@ struct ReminderRow: View {
     let item: ReminderItem
     let color: Color
     let overdue: Bool
+    /// Start of the day the panel shows; times on that day print without a date.
+    let day: Date
     @ObservedObject var state: PanelState
     let actions: RowActions?
     let action: () -> Void
@@ -269,7 +387,7 @@ struct ReminderRow: View {
 
     private var dueText: String {
         guard let due = item.due else { return "No date" }
-        let sameDay = Calendar.current.isDateInToday(due)
+        let sameDay = Calendar.current.isDate(due, inSameDayAs: day)
         if overdue || !sameDay {
             let day = due.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated))
             return item.allDay ? day : day + ", " + due.formatted(date: .omitted, time: .shortened)

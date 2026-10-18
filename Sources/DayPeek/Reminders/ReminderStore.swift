@@ -2,8 +2,10 @@ import AppKit
 import EventKit
 import SwiftUI
 
-/// The only place that talks to EventKit. Fetches open reminders due up to the
-/// end of today plus everything completed today, publishes them as
+/// The only place that talks to EventKit. Fetches the reminders for the day the
+/// panel shows — for today, open reminders due up to the end of today plus
+/// everything completed today; for a future day, open reminders due that
+/// day — publishes them as
 /// `ReminderItem`s, and writes the user's edits back: completion toggles,
 /// title changes, due-date changes, and deletions.
 @MainActor
@@ -14,11 +16,20 @@ final class ReminderStore: ObservableObject {
     @Published private(set) var items: [ReminderItem] = []
     @Published private(set) var buckets = DayBuckets()
     @Published var lastError: String?
+    /// Start of the day on screen. Changes together with `buckets`, once that
+    /// day's reminders have loaded.
+    @Published private(set) var day = Calendar.current.startOfDay(for: Date())
+    /// True when the last day change moved forward; picks the slide direction.
+    private(set) var movedForward = true
 
     private let store = EKEventStore()
     /// Backing EKReminder per item id, needed to save toggles.
     private var reminders: [String: EKReminder] = [:]
     private var colors: [String: NSColor] = [:]
+    /// Start of the day the user asked for; `day` catches up after the fetch.
+    /// Kept as a date, not an offset, so viewing tomorrow across midnight
+    /// lands on today rather than sliding a day further out.
+    private var targetDay = Calendar.current.startOfDay(for: Date())
 
     init() {
         // Reflect changes made in Reminders.app (or by our own saves) while
@@ -36,20 +47,45 @@ final class ReminderStore: ObservableObject {
         return .accentColor
     }
 
+    var dayOffset: Int { DayLabel.offset(of: day, now: Date()) }
+
+    /// Shows the day `offset` days after today (never before today).
+    func showDay(offset: Int) {
+        let cal = Calendar.current
+        let newDay = cal.date(byAdding: .day, value: max(offset, 0), to: cal.startOfDay(for: Date()))!
+        guard newDay != targetDay else { return }
+        targetDay = newDay
+        Task { await reload() }
+    }
+
+    /// Steps the shown day forward or back from the last requested one.
+    func step(by delta: Int) {
+        showDay(offset: DayLabel.offset(of: targetDay, now: Date()) + delta)
+    }
+
     func reload() async {
         guard await ensureAccess() else { return }
 
         let cal = Calendar.current
         let now = Date()
+        let target = targetDay
         let startToday = cal.startOfDay(for: now)
-        let startTomorrow = cal.date(byAdding: .day, value: 1, to: startToday)!
+        let startDay = max(target, startToday)
+        let offset = DayLabel.offset(of: startDay, now: now, calendar: cal)
+        let startNextDay = cal.date(byAdding: .day, value: 1, to: startDay)!
 
+        // Today's open fetch starts at nil so it also picks up overdue items.
         let openPredicate = store.predicateForIncompleteReminders(
-            withDueDateStarting: nil, ending: startTomorrow, calendars: nil)
-        let donePredicate = store.predicateForCompletedReminders(
-            withCompletionDateStarting: startToday, ending: startTomorrow, calendars: nil)
+            withDueDateStarting: offset == 0 ? nil : startDay, ending: startNextDay, calendars: nil)
         let open = await fetch(openPredicate)
-        let done = await fetch(donePredicate)
+        var done: [EKReminder] = []
+        if offset == 0 {
+            let donePredicate = store.predicateForCompletedReminders(
+                withCompletionDateStarting: startToday, ending: startNextDay, calendars: nil)
+            done = await fetch(donePredicate)
+        }
+        // A newer request (a quick second click) owns the screen now.
+        guard target == targetDay else { return }
 
         var byID: [String: EKReminder] = [:]
         var newColors: [String: NSColor] = [:]
@@ -73,7 +109,16 @@ final class ReminderStore: ObservableObject {
         reminders = byID
         colors = newColors
         items = newItems
-        buckets = DayBuckets.make(newItems, now: now, calendar: cal)
+        let newBuckets = DayBuckets.make(newItems, day: startDay, now: now, calendar: cal)
+        if startDay == day {
+            buckets = newBuckets
+        } else {
+            movedForward = startDay > day
+            withAnimation(.easeOut(duration: 0.22)) {
+                day = startDay
+                buckets = newBuckets
+            }
+        }
     }
 
     /// Flips completion and saves immediately. The list updates optimistically;
@@ -172,7 +217,7 @@ final class ReminderStore: ObservableObject {
             items.remove(at: i)
         }
         withAnimation(.easeInOut(duration: 0.2)) {
-            buckets = DayBuckets.make(items, now: Date())
+            buckets = DayBuckets.make(items, day: day, now: Date())
         }
     }
 

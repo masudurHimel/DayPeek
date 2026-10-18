@@ -62,3 +62,46 @@ private func item(_ id: String, due: Date?, completed: Bool = false, completedAt
     #expect(b.remaining == 1)
     #expect(!b.isEmpty)
 }
+
+@Test func futureDayShowsOnlyOpenItemsDueThatDay() {
+    let b = DayBuckets.make([
+        item("overdue", due: at(10, 9)),
+        item("today", due: at(14, 12)),
+        item("evening", due: at(16, 20)),
+        item("morning", due: at(16, 8)),
+        item("later", due: at(17, 9)),
+        item("undated", due: nil),
+        item("doneThatDay", due: at(16, 10), completed: true, completedAt: at(14, 8)),
+    ], day: at(16, 15), now: now, calendar: calendar)
+    #expect(b.today.map(\.id) == ["morning", "evening"])
+    #expect(b.overdue.isEmpty)
+    #expect(b.completed.isEmpty)
+    #expect(b.remaining == 2)
+}
+
+@Test func dayBeforeTodayFallsBackToToday() {
+    let b = DayBuckets.make([
+        item("overdue", due: at(13, 9)),
+        item("today", due: at(14, 12)),
+    ], day: at(12), now: now, calendar: calendar)
+    #expect(b.overdue.map(\.id) == ["overdue"])
+    #expect(b.today.map(\.id) == ["today"])
+}
+
+@Test func dayOffsetCountsWholeDaysAndNeverGoesNegative() {
+    #expect(DayLabel.offset(of: at(14, 23), now: now, calendar: calendar) == 0)
+    #expect(DayLabel.offset(of: at(15, 0), now: now, calendar: calendar) == 1)
+    #expect(DayLabel.offset(of: at(21, 5), now: now, calendar: calendar) == 7)
+    #expect(DayLabel.offset(of: at(10), now: now, calendar: calendar) == 0)
+}
+
+@Test func dayTitleIsRelativeThenWeekdayThenShortDate() {
+    #expect(DayLabel.title(for: at(14), now: now, calendar: calendar) == "Today")
+    #expect(DayLabel.title(for: at(15), now: now, calendar: calendar) == "Tomorrow")
+    let style = Date.FormatStyle(calendar: calendar, timeZone: calendar.timeZone)
+    // 2026-09-16 is a Wednesday.
+    #expect(DayLabel.title(for: at(16), now: now, calendar: calendar) == at(16).formatted(style.weekday(.wide)))
+    #expect(DayLabel.title(for: at(20), now: now, calendar: calendar) == at(20).formatted(style.weekday(.wide)))
+    #expect(DayLabel.title(for: at(21), now: now, calendar: calendar)
+            == at(21).formatted(style.weekday(.abbreviated).day().month(.abbreviated)))
+}

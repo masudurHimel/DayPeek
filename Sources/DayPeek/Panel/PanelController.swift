@@ -15,7 +15,7 @@ final class PanelState: ObservableObject {
 }
 
 /// Shows, hides, and positions the floating panel, reloads reminders every
-/// time it opens, persists its size across launches, and closes it when the
+/// time it opens, returns to today every time it closes, persists its size across launches, and closes it when the
 /// user clicks elsewhere (unless the panel is pinned).
 @MainActor
 final class PanelController: NSObject, NSWindowDelegate {
@@ -88,6 +88,7 @@ final class PanelController: NSObject, NSWindowDelegate {
             self.isClosing = false
             panel.orderOut(nil)
             self.state.scrollResetToken += 1
+            self.store.showDay(offset: 0)
         }
     }
 
@@ -117,6 +118,14 @@ final class PanelController: NSObject, NSWindowDelegate {
             } else {
                 self.hide()
             }
+        }
+        newPanel.onStepDay = { [weak self] delta in
+            guard let self, self.state.editingID == nil else { return }
+            self.store.step(by: delta)
+        }
+        newPanel.onToday = { [weak self] in
+            guard let self, self.state.editingID == nil else { return }
+            self.store.showDay(offset: 0)
         }
         newPanel.contentView = NSHostingView(rootView: PanelRootView(store: store, state: state))
         panel = newPanel
