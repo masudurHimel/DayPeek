@@ -5,6 +5,10 @@ import AppKit
 /// whatever the user is working in.
 final class PeekPanel: NSPanel {
     var onEscape: (() -> Void)?
+    /// ← / → step a day back or forward.
+    var onStepDay: ((Int) -> Void)?
+    /// T jumps back to today.
+    var onToday: (() -> Void)?
 
     init(contentRect: NSRect) {
         super.init(
@@ -48,6 +52,20 @@ final class PeekPanel: NSPanel {
         if event.keyCode == 53 {  // Esc
             onEscape?()
             return
+        }
+        // Only reaches here when no text field took the key, so typing in an
+        // inline title edit is unaffected. Modified keys pass through.
+        if event.modifierFlags.intersection([.command, .control, .option]).isEmpty {
+            switch event.keyCode {
+            case 123:  // ←
+                onStepDay?(-1); return
+            case 124:  // →
+                onStepDay?(1); return
+            default:
+                if event.charactersIgnoringModifiers?.lowercased() == "t" {
+                    onToday?(); return
+                }
+            }
         }
         super.keyDown(with: event)
     }

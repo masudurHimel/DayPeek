@@ -12,6 +12,7 @@ Click the checklist in your menu bar and a clean card pops down — above whatev
 - **Overdue** (red) on top, then **Today**, both sorted by due time. Each row shows a round checkbox in its list colour, the title, the due time (or "All-day"), and the list name.
 - **Click the round checkbox** to complete a reminder — saved to Reminders instantly — and move it to a **Completed** section at the bottom, collapsed by default (click the header to expand). Click a completed reminder's checkbox to reopen it. The rest of the row is inert, so a stray click never ticks anything. The section also lists everything you completed earlier today, in any app.
 - **Hover a reminder** and three small round buttons appear at its right edge: **edit the title** in place (Return saves, Esc cancels), **change the date & time** in a small popover (month grid, Today / Tomorrow / Next week, time, All-day), and **delete** it (with a confirmation; ⌥-click the trash to skip it). Completed rows don't show the buttons.
+- **Look ahead** with the ‹ › chevrons in the header (or ← / →): step one day at a time into the future, never before today. Future days list the open reminders due that day; a blue **Today** pill (or T) jumps straight back, and the panel always reopens on today.
 - **Resizable** by dragging edges/corners (280×240 up to 560×900); the size is remembered.
 - **Esc closes**, click-outside closes (unless pinned), springy pop-down/retract-up animation.
 - **Preferences**: Appearance (System / Light / Dark), pin panel, show row actions on hover, launch at login.
@@ -49,12 +50,15 @@ Click the checklist in your menu bar and a clean card pops down — above whatev
 | Hover a row → ✎ | Edit the title in place (Return saves, Esc cancels) |
 | Hover a row → 🕓 | Change the due date & time in a popover |
 | Hover a row → 🗑 | Delete the reminder (confirms first; ⌥-click skips) |
+| Header › / → | Show the next day |
+| Header ‹ / ← | Show the previous day (stops at today) |
+| Header **Today** pill / T | Back to today |
 | Click the Completed header | Expand / collapse today's completed reminders |
 | Drag panel edges/corners | Resize (remembered) |
 | Drag the panel background | Move the panel |
 | Esc or click outside | Close the panel (Pin panel keeps it open); it reopens scrolled to the top |
 
-What counts as "today": open reminders whose due date is before the start of tomorrow (so overdue ones are included), plus anything completed today. Reminders with no due date are not shown.
+What counts as "today": open reminders whose due date is before the start of tomorrow (so overdue ones are included), plus anything completed today. Reminders with no due date are not shown. A future day shows the open reminders due on that day only.
 
 ## Preferences
 

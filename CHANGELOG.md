@@ -7,6 +7,21 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Bump the version in this file and in `VERSION` together, in the same pull
 request, when you intend to ship. Merging that PR to `master` cuts the release.
 
+## [0.4.0] - 2026-10-18
+
+### Added
+- Day navigation in the panel header. The › chevron (or →) shows the next
+  day, one calendar day at a time with no limit; ‹ (or ←) goes back and stops
+  at today, where it is dimmed. Away from today a blue **Today** pill (or T)
+  jumps straight back, and the title reads Tomorrow, the weekday, or a short
+  date and drops its blue. Future days list only the open reminders due that
+  day: nothing is overdue yet, and early-completed reminders stay in today's
+  Completed section. The panel returns to today each time it closes.
+
+### Changed
+- The header's date and remaining count now sit on one line under the title,
+  making room for the day controls.
+
 ## [0.3.2] - 2026-09-27
 
 ### Changed
